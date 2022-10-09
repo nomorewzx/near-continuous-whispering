@@ -5,6 +5,10 @@ Install openai/whisper
 
     pip install git+https://github.com/openai/whisper.git
 
+Install requirements
+
+    pip install -r requirements.txt
+
 Start the Gradio app
 
     python whisper_demo.py
