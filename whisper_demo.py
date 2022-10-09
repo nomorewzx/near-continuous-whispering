@@ -1,6 +1,6 @@
 import datetime
 import os
-os.system('pip install git+https://github.com/openai/whisper.git')
+# os.system('pip install git+https://github.com/openai/whisper.git')
 from whisper.audio import N_SAMPLES
 import gradio as gr
 import wave
@@ -69,7 +69,7 @@ def transcribe(audio, state={}):
     logging.info(state)
     # Whisper only take maximum 30s of audio as input.
     # And the gradio streaming does not guarantee each callback is 1s, And I set CNT_PER_CHUNK as 6, it's just a rough guess that 6 callbacks does not sum up an audio longer than 30s.
-    # The logic of determine chunk could be improved by reading exact how many samples in audio files.
+    # The logic of chunk splitting could be improved by reading exact how many samples in audio files.
     # After count reach CNT_PER_CHUNK * n, a new audio file is created.
     # However the text should not change.
 
@@ -114,7 +114,20 @@ def transcribe(audio, state={}):
 # Make sure not missing any audio clip.
 assert CNT_PER_CHUNK % RECOGNITION_INTERVAL == 0
 
+DESCRIPTION = '''
+<div align=center>
+    <h3 style="font-weight: 900; margin-bottom: 7px;">
+        Try to play the video and see how Whisper transcribe!
+    </h3>
+    <video id="video" width=50% controls="" preload="none">
+        <source id="mp4" src="file:///demo_video/whisper_demo.mp4" type="video/mp4">
+    </videos>
+</div>
+'''
+
 gr.Interface(fn=transcribe,
              inputs=[gr.Audio(source="microphone", type='filepath', streaming=True), 'state'],
              outputs = ['text', 'state'],
+             article=DESCRIPTION,
              live=True).launch()
+
