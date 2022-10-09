@@ -1,6 +1,9 @@
 import datetime
 import os
-os.system('pip install git+https://github.com/openai/whisper.git')
+
+from whisper.audio import N_SAMPLES, CHUNK_LENGTH
+
+# os.system('pip install git+https://github.com/openai/whisper.git')
 import gradio as gr
 import wave
 import whisper
@@ -11,7 +14,7 @@ import torchaudio.functional as F
 LOGGING_FORMAT = '%(asctime)s %(message)s'
 logging.basicConfig(format=LOGGING_FORMAT,level=logging.INFO)
 
-REC_INTERVAL_IN_SECONDS = 3
+REC_INTERVAL_IN_SECONDS = 4
 
 # tmp dir to store audio files.
 if not os.path.isdir('./tmp/'):
@@ -31,7 +34,7 @@ class WhisperStreaming():
     def transcribe_audio_file(self, wave_file_path):
         waveform, sample_rate = torchaudio.load(wave_file_path)
         resampled_waveform = F.resample(waveform, sample_rate, self.whisper_sample_rate, lowpass_filter_width=6)
-        audio_tmp = whisper.pad_or_trim(resampled_waveform[0])
+        audio_tmp = whisper.pad_or_trim(resampled_waveform[0], length=N_SAMPLES)
         mel = whisper.log_mel_spectrogram(audio_tmp)
         results = self.whisper_model.decode(mel, self.decode_option)
         return results
@@ -66,26 +69,51 @@ def transcribe(audio, state={}):
     logging.info(f'Transcribe audio file {audio}')
     print('=====================')
     logging.info(state)
+    # Whisper only take maximum 30s of audio as input.
+    # And the gradio streaming does not guarantee each callback is 1s, so -2 as buffer
+    # After count reach 28 * n, a new audio file is created.
+    # However the text should not change.
 
     if not state:
-        state['concated_audio'] = audio
-        state['result_text'] = 'Waitting...'
+        state['all_chunk_texts'] = 'Waitting...'
         state['count'] = 0
-    else:
-        state['concated_audio'] = concat_multiple_wav_files([state['concated_audio'], audio])
-        state['count'] += 1
+        state['chunks'] = {}
+        return state['all_chunk_texts'], state
 
-    if state['count'] % REC_INTERVAL_IN_SECONDS == 0 and state['count'] > 0:
-        logging.info('start to transcribe.......')
-        result = whisper_model.transcribe_audio_file(state['concated_audio'])
+    chunk = state['count'] // (CHUNK_LENGTH - 2)
+    chunk_offset = state['count'] % (CHUNK_LENGTH - 2)
+
+    if chunk_offset == 0:
+        state['chunks'][chunk] = {}
+        state['chunks'][chunk]['concated_audio'] = audio
+        state['chunks'][chunk]['result_text'] = ''
+    else:
+        state['chunks'][chunk]['concated_audio'] = concat_multiple_wav_files([state['chunks'][chunk]['concated_audio'], audio])
+
+    state['count'] += 1
+
+    # Determin if recognizes current chunk.
+    if (chunk_offset + 1) % REC_INTERVAL_IN_SECONDS == 0 and chunk_offset > 0:
+        logging.info(f'start to transcribe chunk: {chunk}, offset: {chunk_offset}')
+        result = whisper_model.transcribe_audio_file(state['chunks'][chunk]['concated_audio'])
         logging.info('complete transcribe.......')
-        state['result_text'] = result.text
-        logging.info('The text is:' + state['result_text'])
+        state['chunks'][chunk]['result_text'] = result.text
+        logging.info('The text is:' + state['chunks'][chunk]['result_text'])
     else:
-        logging.info(f'The count of streaming is {state["count"]}, and skip speech recognition')
+        logging.info(f'The offset of streaming chunk is {chunk_offset}, and skip speech recognition')
 
-    return state['result_text'], state
+    # Concat result_texts of all chunks
+    result_texts = ''
 
+    for tmp_chunk_idx, tmp_chunk_values in state['chunks'].items():
+        result_texts += tmp_chunk_values['result_text']
+
+    state['all_chunk_texts'] = result_texts
+
+    return state['all_chunk_texts'], state
+
+# Make sure not missing any audio clip.
+assert (CHUNK_LENGTH - 2) % REC_INTERVAL_IN_SECONDS == 0
 
 gr.Interface(fn=transcribe,
              inputs=[gr.Audio(source="microphone", type='filepath', streaming=True), 'state'],
