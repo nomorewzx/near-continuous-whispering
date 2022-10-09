@@ -115,6 +115,8 @@ def transcribe(audio, state={}):
 assert CNT_PER_CHUNK % RECOGNITION_INTERVAL == 0
 
 STEP_ONE_DESCRIPTION = '''
+    Model: base
+    Language: en
 <div>
     <h3>
         Step1. Click button <i>"Record from microphone"</i> and allow this site to use your microphone.
