@@ -105,7 +105,7 @@ def transcribe(audio, state={}):
     result_texts = ''
 
     for tmp_chunk_idx, tmp_chunk_values in state['chunks'].items():
-        result_texts += tmp_chunk_values['result_text']
+        result_texts += tmp_chunk_values['result_text'] + ' '
 
     state['all_chunk_texts'] = result_texts
 
