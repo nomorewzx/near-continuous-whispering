@@ -1,6 +1,6 @@
 import datetime
 import os
-# os.system('pip install git+https://github.com/openai/whisper.git')
+os.system('pip install git+https://github.com/openai/whisper.git')
 from whisper.audio import N_SAMPLES
 import gradio as gr
 import wave
@@ -114,13 +114,25 @@ def transcribe(audio, state={}):
 # Make sure not missing any audio clip.
 assert CNT_PER_CHUNK % RECOGNITION_INTERVAL == 0
 
-DESCRIPTION = '''
+STEP_ONE_DESCRIPTION = '''
+<div>
+    <h3>
+        Step1. Click button <i>"Record from microphone"</i> and allow this site to use your microphone.
+    </h3>
+    <note>Right now the continuous Speech to text transcription is lag and sometimes missing some sentences...</note>
+</div>
+'''
+
+STEP_TWO_DESCRIPTION = '''
 <div align=center>
     <h3 style="font-weight: 900; margin-bottom: 7px;">
-        Try to play the video and see how Whisper transcribe!
+        Step2. Try to play the video and see how Whisper transcribe!
     </h3>
+    <p>
+        Note: make sure using speaker that your computer microphone is able to hear! i.e. computer default speaker
+    </p>
     <video id="video" width=50% controls="" preload="none">
-        <source id="mp4" src="file:///demo_video/whisper_demo.mp4" type="video/mp4">
+        <source id="mp4" src="https://nomorewzx.github.io/near-continuous-whispering/demo_video/whisper_demo.mp4" type="video/mp4">
     </videos>
 </div>
 '''
@@ -128,6 +140,7 @@ DESCRIPTION = '''
 gr.Interface(fn=transcribe,
              inputs=[gr.Audio(source="microphone", type='filepath', streaming=True), 'state'],
              outputs = ['text', 'state'],
-             article=DESCRIPTION,
+             description=STEP_ONE_DESCRIPTION,
+             article=STEP_TWO_DESCRIPTION,
              live=True).launch()
 
