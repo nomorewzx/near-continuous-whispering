@@ -12,8 +12,8 @@ import torchaudio.functional as F
 LOGGING_FORMAT = '%(asctime)s %(message)s'
 logging.basicConfig(format=LOGGING_FORMAT,level=logging.INFO)
 
-RECOGNITION_INTERVAL = 2
-CNT_PER_CHUNK = 6
+RECOGNITION_INTERVAL = 6
+CNT_PER_CHUNK = 12
 # tmp dir to store audio files.
 if not os.path.isdir('./tmp/'):
     os.mkdir('./tmp')
@@ -144,5 +144,5 @@ gr.Interface(fn=transcribe,
              outputs = ['text', 'state'],
              description=STEP_ONE_DESCRIPTION,
              article=STEP_TWO_DESCRIPTION,
-             live=True).launch()
+             live=True).queue(concurrency_count=5).launch()
 
